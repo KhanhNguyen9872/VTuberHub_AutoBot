@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from ..config import FAN_BADGE_SECONDS
+from ..errors import AccountError
 from ..telegram import telegram_send_to
 from ..utils import fmt_duration, fmt_num, fmt_time, short_text, today_utc
 
@@ -13,6 +14,8 @@ class CommandsMixin:
     def handle_command(self, text: str, chat_id: str) -> None:
         try:
             reply = self._dispatch_command(text)
+        except AccountError as exc:
+            reply = f"❌ {exc}"
         except Exception as exc:
             reply = f"❌ Lỗi: {type(exc).__name__}: {exc}"
         if reply:

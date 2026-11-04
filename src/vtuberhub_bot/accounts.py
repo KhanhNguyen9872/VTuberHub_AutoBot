@@ -19,11 +19,7 @@ from typing import Any
 
 from .api.client import Client
 from .config import BASE_STATE_DIR, DEFAULT_BASE, MAX_ACCOUNTS
-
-
-
-class AccountError(RuntimeError):
-    pass
+from .errors import AccountError, login_error_message
 
 
 class AccountManager:
@@ -170,8 +166,11 @@ class AccountManager:
                     f"đã đạt giới hạn {self.max_accounts} account"
                 )
         client = self._new_client()
-        client.login(username, password)
-        me = client.me()
+        try:
+            client.login(username, password)
+            me = client.me()
+        except Exception as exc:
+            raise AccountError(login_error_message(username, exc)) from exc
         token = client.session.headers.get("Authorization", "")
         if token.startswith("Bearer "):
             token = token[7:]
@@ -255,8 +254,11 @@ class AccountManager:
         if not password:
             raise AccountError("session hết hạn; dùng /login lại")
         client = self._new_client()
-        client.login(name, password)
-        me = client.me()
+        try:
+            client.login(name, password)
+            me = client.me()
+        except Exception as exc:
+            raise AccountError(login_error_message(name, exc)) from exc
         new_token = client.session.headers.get("Authorization", "")
         if new_token.startswith("Bearer "):
             new_token = new_token[7:]

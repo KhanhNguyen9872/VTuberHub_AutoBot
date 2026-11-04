@@ -14,9 +14,11 @@ from ..config import (
     ACCOUNT_STATE_FIELDS,
     BASE_STATE_DIR,
     DEFAULT_FEATURES,
+    ERROR_THROTTLE_SECONDS,
     VN_TZ,
     WATCH_DEFAULT_LIMIT_HOURS,
 )
+from ..errors import AccountError
 from ..storage import (
     load_daily_state,
     load_state,
@@ -230,11 +232,19 @@ class BaseWorker:
         state["last_errors"] = dict(state.get("last_errors") or {})
         state["last_errors"][task] = time.time()
         self.update_state(last_errors=state["last_errors"])
-        text = (
-            f"❌ VTuberVN auto lỗi: {task}\n"
-            f"Time: {datetime.now(VN_TZ).strftime('%Y-%m-%d %H:%M %Z')}\n"
-            f"{type(exc).__name__}: {exc}"
-        )
+        if isinstance(exc, AccountError):
+            text = (
+                f"⚠️ Account lỗi: {task}\n"
+                f"Time: {datetime.now(VN_TZ).strftime('%Y-%m-%d %H:%M %Z')}\n"
+                f"{exc}\n"
+                "Dùng /login để cập nhật account."
+            )
+        else:
+            text = (
+                f"❌ VTuberVN auto lỗi: {task}\n"
+                f"Time: {datetime.now(VN_TZ).strftime('%Y-%m-%d %H:%M %Z')}\n"
+                f"{type(exc).__name__}: {exc}"
+            )
         print(text, flush=True)
         if self.feature("notifications"):
             self.send_telegram(text)

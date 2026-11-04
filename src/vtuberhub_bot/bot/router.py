@@ -212,6 +212,13 @@ class MultiUserBot:
                 "Ai cũng có thể /start, /login và dùng các tính năng.\n"
                 "Mỗi người có account/state riêng.",
             )
+            owner_daemon = self.daemons.get(self.owner_chat)
+            if owner_daemon is not None and not owner_daemon.accounts.active():
+                telegram_send_to(
+                    self.owner_chat,
+                    "⚠️ Owner chưa có account active.\n"
+                    "Dùng /login <username> <password> để thêm/cập nhật.",
+                )
         threading.Thread(
             target=self.telegram_loop, name="telegram", daemon=True
         ).start()

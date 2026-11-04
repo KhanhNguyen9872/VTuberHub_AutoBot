@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from ..config import FAN_BADGE_SECONDS, VN_TZ, WATCH_DEFAULT_LIMIT_HOURS
+from ..errors import AccountError
 from ..utils import fmt_duration, fmt_epoch, fmt_num, fmt_time, short_text, today_utc
 
 
@@ -138,6 +139,8 @@ class ViewsMixin:
                 )
             except Exception:
                 pass
+        except AccountError as exc:
+            account = f"⚠️ {exc}"
         except Exception as exc:
             account = f"login/API error: {exc}"
         current = state.get("current_watch") or {}
