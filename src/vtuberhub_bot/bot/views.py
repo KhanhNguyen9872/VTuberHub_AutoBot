@@ -319,7 +319,10 @@ class ViewsMixin:
             pass
         rows = self.accounts.list_accounts()
         if not rows:
-            return "👥 Chưa có account nào.\nDùng /login <username> <password>."
+            return (
+                "👥 Chưa có account nào.\n"
+                "Dùng /login <username> <password> hoặc /token <jwt>."
+            )
         lines = ["👥 Accounts", ""]
         for row in rows:
             mark = "✅" if row["active"] else "•"

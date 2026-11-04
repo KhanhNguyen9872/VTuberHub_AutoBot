@@ -1,8 +1,12 @@
 """Login/account error translation tests."""
 from __future__ import annotations
 
+import base64
+import json
+import tempfile
 import unittest
 
+from vtuberhub_bot.accounts import AccountManager, token_expiry
 from vtuberhub_bot.errors import AccountError, describe_account_error, login_error_message
 
 
@@ -54,6 +58,21 @@ class ErrorTests(unittest.TestCase):
 
     def test_describe(self) -> None:
         self.assertEqual(describe_account_error(AccountError("abc")), "abc")
+
+    def test_token_expiry(self) -> None:
+        payload = base64.urlsafe_b64encode(
+            json.dumps({"exp": 1893456000}).encode()
+        ).decode().rstrip("=")
+        token = f"eyJhbGciOiJIUzI1NiJ9.{payload}.sig"
+        expiry = token_expiry(token)
+        self.assertIsNotNone(expiry)
+        self.assertEqual(expiry.year, 2030)
+
+    def test_empty_token_login(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = AccountManager(state_dir=tmp, seed_env=False)
+            with self.assertRaises(AccountError):
+                manager.login_with_token("")
 
 
 if __name__ == "__main__":

@@ -4,13 +4,42 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from ..config import FAN_BADGE_SECONDS
+from ..accounts import token_expiry
+from ..config import FAN_BADGE_SECONDS, VN_TZ
 from ..errors import AccountError
 from ..telegram import telegram_send_to
 from ..utils import fmt_duration, fmt_num, fmt_time, short_text, today_utc
 
 
 class CommandsMixin:
+    def token_login_reply(self, token: str) -> str:
+        token = (token or "").strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        try:
+            account = self.accounts.login_with_token(
+                token, make_active=False
+            )
+            self.switch_account(account["username"])
+            self.pause_watch.clear()
+            self.favorite_cancel.clear()
+            expiry = token_expiry(token)
+            expiry_text = ""
+            if expiry is not None:
+                expiry_text = (
+                    "\nToken hết hạn: "
+                    + expiry.astimezone(VN_TZ).strftime("%d/%m %H:%M")
+                )
+            return (
+                f"✅ Đã login bằng token: {account['username']}\n"
+                f"Lv.{account.get('level')} | EXP {fmt_num(account.get('exp'))}"
+                f"{expiry_text}\n"
+                "Dùng /accounts để xem list.\n"
+                "(Nên xóa tin nhắn chứa token.)"
+            )
+        except AccountError as exc:
+            return f"❌ {exc}"
+
     def handle_command(self, text: str, chat_id: str) -> None:
         try:
             reply = self._dispatch_command(text)
@@ -36,7 +65,8 @@ class CommandsMixin:
         if cmd in ("/start", "/help", "/menu"):
             reply = (
                 "🤖 VTuberVN Auto EXP bot\n"
-                "Ai cũng có thể dùng; mỗi người có account/state riêng.\n\n"
+                "Ai cũng có thể dùng; mỗi người có account/state riêng.\n"
+                "/help — trợ giúp đầy đủ\n\n"
                 "📊 Xem dữ liệu\n"
                 "/status — account + tổng hôm nay + features\n"
                 "/profile [username] — hồ sơ, level, EXP, rank\n"
@@ -55,6 +85,7 @@ class CommandsMixin:
                 "/ping — kiểm tra API\n\n"
                 "👥 Account\n"
                 "/login <username> <password> — thêm/đăng nhập account\n"
+                "/login token <jwt> | /token <jwt> — login bằng token browser (bỏ qua captcha)\n"
                 "/logout [username] — xoá account khỏi list switch\n"
                 "/switch <username> — đổi account\n"
                 "/accounts — danh sách account\n"
@@ -125,10 +156,28 @@ class CommandsMixin:
             reply = self.accounts_text()
         elif cmd == "/whoami":
             reply = self.profile_text()
+        elif cmd in ("/token", "/logintoken"):
+            token_parts = raw.split(maxsplit=1)
+            if len(token_parts) < 2 or not token_parts[1].strip():
+                reply = "Dùng: /token <jwt> (lấy token trong browser)"
+            else:
+                reply = self.token_login_reply(token_parts[1].strip())
         elif cmd == "/login":
             login_parts = raw.split(maxsplit=2)
-            if len(login_parts) < 3:
-                reply = "Dùng: /login <username> <password>"
+            second = login_parts[1].strip() if len(login_parts) > 1 else ""
+            if len(login_parts) >= 3 and second.lower() == "token":
+                reply = self.token_login_reply(login_parts[2].strip())
+            elif (
+                len(login_parts) >= 2
+                and second.startswith("eyJ")
+                and second.count(".") == 2
+            ):
+                reply = self.token_login_reply(second)
+            elif len(login_parts) < 3:
+                reply = (
+                    "Dùng: /login <username> <password>\n"
+                    "Hoặc: /login token <jwt>"
+                )
             else:
                 username, password = login_parts[1].strip(), login_parts[2]
                 account = self.accounts.login(username, password, make_active=False)

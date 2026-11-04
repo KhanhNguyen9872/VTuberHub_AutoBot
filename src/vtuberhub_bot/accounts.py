@@ -11,6 +11,7 @@ with the stored password.  /logout removes the account from the switch list.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import threading
@@ -19,7 +20,26 @@ from typing import Any
 
 from .api.client import Client
 from .config import BASE_STATE_DIR, DEFAULT_BASE, MAX_ACCOUNTS
-from .errors import AccountError, login_error_message
+from .errors import (
+    AccountError,
+    describe_account_error,
+    login_error_message,
+    parse_api_error,
+)
+
+
+def token_expiry(token: str) -> datetime | None:
+    """Read the exp claim from a JWT without verifying the signature."""
+    try:
+        payload = (token or "").split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        data = json.loads(base64.urlsafe_b64decode(payload))
+        exp = int(data.get("exp") or 0)
+        if exp:
+            return datetime.fromtimestamp(exp, tz=timezone.utc)
+    except Exception:
+        pass
+    return None
 
 
 class AccountManager:
@@ -202,6 +222,61 @@ class AccountManager:
             self._save()
             return dict(self.data["accounts"][username])
 
+    def login_with_token(
+        self, token: str, make_active: bool = True
+    ) -> dict[str, Any]:
+        """Login by pasting a browser JWT (bypasses captcha/password login)."""
+        token = (token or "").strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        if not token:
+            raise AccountError("token trống")
+        client = self._new_client(token)
+        try:
+            me = client.json("GET", "/api/v2/users/me")
+        except Exception as exc:
+            status, message, body = parse_api_error(exc)
+            code = message.lower()
+            if "banned" in code or "banned" in str(exc).lower():
+                raise AccountError("Tài khoản đã bị cấm.") from exc
+            if status == 401 or "invalid" in code or "expired" in code:
+                raise AccountError(
+                    "Token không hợp lệ hoặc đã hết hạn. "
+                    "Lấy token mới từ browser rồi thử lại."
+                ) from exc
+            raise AccountError(describe_account_error(exc)) from exc
+        username = (me.get("username") or "").strip()
+        if not username:
+            raise AccountError("Token không trả về username.")
+        now = datetime.now(timezone.utc).isoformat()
+        with self.lock:
+            if (
+                username not in self.data["accounts"]
+                and len(self.data["accounts"]) >= self.max_accounts
+            ):
+                raise AccountError(
+                    f"đã đạt giới hạn {self.max_accounts} account"
+                )
+            old = self.data["accounts"].get(username, {})
+            self.data["accounts"][username] = {
+                "username": username,
+                "password": old.get("password") or "",
+                "token": token,
+                "auth_method": "token",
+                "user_id": me.get("id"),
+                "display_name": me.get("displayName") or username,
+                "level": me.get("level"),
+                "exp": me.get("exp"),
+                "added_at": old.get("added_at") or now,
+                "last_login": now,
+                "last_error": "",
+            }
+            if make_active or not self.data.get("active"):
+                self.data["active"] = username
+            self.data["seeded"] = True
+            self._save()
+            return dict(self.data["accounts"][username])
+
     def logout(self, username: str | None = None) -> str:
         with self.lock:
             name = (username or self.data.get("active") or "").strip()
@@ -252,7 +327,7 @@ class AccountManager:
                 pass
         password = acc.get("password")
         if not password:
-            raise AccountError("session hết hạn; dùng /login lại")
+            raise AccountError("session hết hạn; dùng /login hoặc /token lại")
         client = self._new_client()
         try:
             client.login(name, password)
