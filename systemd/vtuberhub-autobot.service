@@ -1,0 +1,30 @@
+[Unit]
+Description=VTuberHub AutoBot (multi-user Telegram)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=vtubervn
+Group=vtubervn
+WorkingDirectory=/opt/vtuberhub-autobot
+EnvironmentFile=/etc/vtuberhub-autobot.env
+Environment=PYTHONPATH=/opt/vtuberhub-autobot/src
+Environment=VTUBERVN_STATE_DIR=/var/lib/vtuberhub-autobot
+ExecStart=/opt/vtuberhub-autobot/venv/bin/python /opt/vtuberhub-autobot/scripts/auto_exp_daemon.py
+Restart=always
+RestartSec=10
+TimeoutStopSec=45
+KillSignal=SIGTERM
+Nice=10
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/vtuberhub-autobot
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vtuberhub-autobot
+
+[Install]
+WantedBy=multi-user.target
