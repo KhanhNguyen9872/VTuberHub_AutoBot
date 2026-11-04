@@ -6,7 +6,7 @@ online presence, favorite EXP, fan badge và các lệnh xem dữ liệu.
 ## Tính năng
 
 - **Multi-user**: mọi private chat đều dùng được; mỗi chat có account/state riêng.
-- **Account**: `/login`, `/logout`, `/switch`, `/accounts`, token + password lưu file `600`.
+- **Account**: `/login`, `/login token <jwt>` / `/token <jwt>`, `/logout`, `/switch`, `/accounts`; token + password lưu file `600`.
 - **Auto**:
   - daily login, music farm, watch 5 phút/channel
   - online presence cho achievement `online_10h` / `online_100h`
@@ -78,6 +78,25 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now vtuberhub-autobot.service
 journalctl -u vtuberhub-autobot.service -f
 ```
+
+## Captcha / token login
+
+Nếu login username/password bị `CAPTCHA_REQUIRED`, dùng token từ browser:
+
+1. Đăng nhập `vtuberhub.vn` trên browser.
+2. Mở DevTools → Console:
+   ```js
+   localStorage.getItem('vtubervn_jwt')
+   ```
+   hoặc Application → Local Storage → `https://vtuberhub.vn` → `vtubervn_jwt`.
+3. Copy chuỗi `eyJ...` và gửi:
+   ```text
+   /token eyJ...
+   # hoặc
+   /login token eyJ...
+   ```
+
+Bot lưu token vào `accounts.json` (mode 600), dùng trực tiếp để gọi API — bỏ qua captcha. Token hết hạn thì lấy token mới từ browser và gửi lại. Nên xóa tin nhắn chứa token sau khi login.
 
 ## State
 
