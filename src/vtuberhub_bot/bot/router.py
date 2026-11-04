@@ -65,12 +65,14 @@ class MultiUserBot:
             return
         os.makedirs(owner_dir, mode=0o700, exist_ok=True)
         os.chmod(owner_dir, 0o700)
+        copied = False
         for name in ("daemon.json", "accounts.json", "daily.json"):
             src = os.path.join(self.base_dir, name)
             dst = os.path.join(owner_dir, name)
             if os.path.exists(src) and not os.path.exists(dst):
                 shutil.copy2(src, dst)
                 os.chmod(dst, 0o600)
+                copied = True
         for name in os.listdir(self.base_dir):
             if name.startswith("daily_") and name.endswith(".json"):
                 src = os.path.join(self.base_dir, name)
@@ -78,6 +80,7 @@ class MultiUserBot:
                 if os.path.isfile(src) and not os.path.exists(dst):
                     shutil.copy2(src, dst)
                     os.chmod(dst, 0o600)
+                    copied = True
         # Preserve the Telegram update offset so old commands are not replayed.
         if not os.path.exists(self.bot_state_path):
             old_daemon = os.path.join(self.base_dir, "daemon.json")
@@ -88,7 +91,8 @@ class MultiUserBot:
                 self._save_offset()
             except (OSError, ValueError):
                 pass
-        print(f"migrated owner state -> {owner_dir}", flush=True)
+        if copied:
+            print(f"migrated owner state -> {owner_dir}", flush=True)
 
     def get_daemon(self, chat_id: str) -> Daemon:
         chat_id = str(chat_id)
