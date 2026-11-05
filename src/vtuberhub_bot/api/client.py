@@ -8,6 +8,8 @@ from typing import Any
 import requests
 import urllib3
 
+from ..config import browser_headers
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class Client:
@@ -16,6 +18,7 @@ class Client:
         self.insecure = insecure
         self.session = requests.Session()
         self.session.verify = not insecure
+        self.session.headers.update(browser_headers(self.base))
         if token:
             self.session.headers["Authorization"] = f"Bearer {token}"
 

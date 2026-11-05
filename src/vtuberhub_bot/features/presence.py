@@ -48,6 +48,7 @@ def online_session(
         reconnection=False,
         request_timeout=20,
         ssl_verify=not client.insecure,
+        http_session=client.session,
     )
     started = 0.0
     ended_at = 0.0
@@ -112,6 +113,7 @@ def trigger_achievements(client: Client, wait_seconds: int = 65) -> None:
         reconnection=False,
         request_timeout=15,
         ssl_verify=not client.insecure,
+        http_session=client.session,
     )
     try:
         sio.connect(

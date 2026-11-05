@@ -5,7 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vtuberhub_bot.config import DEFAULT_FEATURES, FAN_BADGE_SECONDS
+from vtuberhub_bot.config import (
+    DEFAULT_FEATURES,
+    DEFAULT_USER_AGENT,
+    FAN_BADGE_SECONDS,
+    browser_headers,
+)
 from vtuberhub_bot.storage import (
     load_daily_state,
     load_state,
@@ -21,6 +26,13 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(DEFAULT_FEATURES["watch"])
         self.assertTrue(DEFAULT_FEATURES["online"])
         self.assertFalse(DEFAULT_FEATURES["fan_multi"])
+
+    def test_browser_headers(self) -> None:
+        headers = browser_headers("https://vtuberhub.vn")
+        self.assertEqual(headers["User-Agent"], DEFAULT_USER_AGENT)
+        self.assertIn("Chrome", headers["User-Agent"])
+        self.assertEqual(headers["Origin"], "https://vtuberhub.vn")
+        self.assertEqual(headers["Referer"], "https://vtuberhub.vn/")
 
     def test_formatting(self) -> None:
         self.assertEqual(fmt_num(129600), "129,600")

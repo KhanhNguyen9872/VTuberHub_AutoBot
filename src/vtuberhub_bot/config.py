@@ -13,6 +13,28 @@ except Exception:  # pragma: no cover
 
 DEFAULT_BASE = os.getenv("VTUBERVN_BASE", "https://vtuberhub.vn")
 BASE_STATE_DIR = os.getenv("VTUBERVN_STATE_DIR", "/var/lib/vtuberhub-autobot")
+DEFAULT_USER_AGENT = os.getenv(
+    "VTUBERVN_USER_AGENT",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+)
+
+
+def browser_headers(base: str) -> dict[str, str]:
+    origin = base.rstrip("/")
+    return {
+        "User-Agent": DEFAULT_USER_AGENT,
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Origin": origin,
+        "Referer": f"{origin}/",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "sec-ch-ua": '"Chromium";v="140", "Not_A Brand";v="24", "Google Chrome";v="140"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+    }
 
 DEFAULT_FEATURES = {
     "daily": True,
